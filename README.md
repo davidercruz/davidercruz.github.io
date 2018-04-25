@@ -1,1 +1,0 @@
-# davidercruz.github.io
