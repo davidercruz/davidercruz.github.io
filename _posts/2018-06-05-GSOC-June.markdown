@@ -1,0 +1,84 @@
+---
+layout: post
+title:  "GSOC2018: June update - the API"
+date:   2018-06-05 21:57:13 +0100
+categories: GSOC2018
+---
+   During the two week period after the previous post, I had the opportunity to talk with the people at [MDAnalysis](https://www.mdanalysis.org/) on how to implement on-the-fly trajectory transformations (see [#786](https://github.com/MDAnalysis/mdanalysis/issues/786)). We agreed that I look at how coordinate files are read, what methods from which classes are read, in order to have a clearer picture of how the API works.
+   When the user creates an instance of the `Universe` class with topology and trajectory files
+
+```python   
+	u = MDAnalysis.Universe(topology, trajectory)
+```
+	
+   the `load_new()` method of this class is called. This method calls the `get_reader_for()` method of the `_get_readers` module. When no format is provided, this method guesses it based on the trajectory file extension and returns the appropriate reader class.
+   
+   An instance of the reader class is created. Inside the reader, the first frame of the trajectory is read and converted to a `Timestep` object, the units are converted to MDAnalysis base, and the `Timestep` is returned by the reader. 
+   
+   Finally, the trajectory property from the Universe class becomes a reference to the trajectory reader object, and the user can access the methods from the ProtoReader.
+   
+   When the user requests another frame of the trajectory
+
+```python
+u.trajectory.next()
+```
+
+   the method `next()` from the ProtoReader updates the current instance of `Timestep`, `ts`, by calling the `_read_next_timestep()` method. This method is overloaded by the `_read_next_timestep()` of the reader class for that format. 
+   
+   Inside the `_read_next_timestep()` of the reader class, the next frame is read from the file and converted to `Timestep` as before. Units are also converted as before. Finally `next()` returns the updated `ts`.
+    
+   In February [Richard Gowers](https://github.com/richardjgowers) had shown that transformations could be implemented on the back of the methods that deal with auxiliary data files for the trajectory (see [#1215](https://github.com/MDAnalysis/mdanalysis/pull/1215)). These methods are part of the `ProtoReader` class, which serves as the parent class for all the format readers. This is where the transformations API has to be implemented, as it will be inherited by all the format readers and kept contained and consistent.
+   
+   From this starting point, I started playing with the API, becoming more and more familiar with it. You can check the progress on this [pull request](https://github.com/MDAnalysis/mdanalysis/pull/1902#discussion_r193114524). Thanks to my GSOC mentors [Jonathan Barnoud](https://github.com/jbarnoud) and Richard Gowers, and the input of [Oliver Beckstein](https://github.com/orbeckst) and [Manuel Melo](https://github.com/mnmelo) the implementation became solid and much cleaner.
+   
+   So, how is the API implemented?
+   
+   The `ProtoReader` now has a property called `transformations`. This property contains the transformations that are added by the user using one of two ways:
+   
+   upon instancing the Universe class using the `transformations` keyword
+   
+```python
+workflow = [thistransform(args), othertransform(args)]
+u = MDAnalysis.Universe(topology, trajectory, transformations = workflow)
+```
+
+   after instancing the universe using the `add_transformations()` method of the reader class
+   
+```python
+workflow = [thistransform(args), othertransform(args)]
+u = MDAnalysis.Universe(topology, trajectory)
+u.trajectory.add_transformations(*workflow)
+```
+
+   In both cases the `add_transformations()` method is called (implicitly or explicitly). This method checks if transformations have already been added (raising an exception if transformations have been added previously, which I'll explain later), and, save for three special cases - the `ChainReader`, `SingleFrameReaderBase` and the `MemoryReader` - will apply the transformations to the current `Timestep` instance. 
+   
+   But where is the Timestep changed?
+   
+   There are two methods in the `ProtoReader` that are called by almost all the readers, either when iterating the full trajectory, or a part of it (a slice): `next()` and `_read_frame_with_aux()`. The first one reads the next frame of the trajectory, and is called when we iterate over all the frames. The second one is called when iterating over a slice of the trajectory, and updates the frame as well as the auxiliary data. Also very important - both these methods return a `Timestep`.
+   
+   So, these are the best candidates to apply the transformations. I added a `_apply_transformations()` method to the class - which, as the name says, applies the transformations to an argument timestep and returns it. This method is called by `next()` and `_read_frame_with_aux()`.
+   
+   And there it is, the trajectory transformations API.
+   
+   Well, almost...
+   
+   Remember the three special cases?
+   The `ChainReader`, `SingleFrameReaderBase` and the `MemoryReader` behave differently to the other readers, even though they are also subclasses to the `ProtoReader`. The first one calls other readers and turns multiple trajectories into a single one. The second one, as the name says, reads single frame formats. The latter reads the trajectory from memory. In all three cases, using the API as described above resulted in frames being transformed multiple times - if you translate a trajectory by 10 in all three coordinates, these coordinates would be shifted by ten every time that frame was read. To avoid this, the `add_transformations()` and `_apply_transformations()` methods would need to be overridden in these classes.
+   
+   Since the `ChainReader` creates a format reader instance for each input file, then the `add_transformations()` method needs to add the transformation to the `transformations` property of the `ChainReader`, but call the corresponding method of the format reader being used for that input file. As for the `_apply_transformations()`, since the transformations are no longer handled directly by the `ChainReader`, it will simply return the `Timestep` given as argument.
+   
+   The readers of the `SingleFrameReaderBase` class read the input file only once, and the `Timestep` instance created upon reading is stored in the memory, as opposed to the multiple frame readers (except for the memory format), which read the frame from storage every time. So, when reading that frame over and over again, the "overtransformation" phenomenon would happen. Similarly, in the `MemoryReader`, since the trajectory is stored in memory, the `Timesteps` are modified directly in the source. 
+   
+   In both this cases the transformations methods need to be changed - by applying the transformation over the all the trajectory at once ( a single frame in the case of the `SingleFrameReaderBase` class readers) and only once, the "overtransformation" phenomenon is avoided. The `add_transformations()`, when called, adds the transformations to the `transformations` property, iterates over the trajectory and transforms every single frame. As in the previous case, the `_apply_transformations()` method simply returns the timestep given as argument, without further modifications.
+   
+   Remember that I said that transformations can only be added once? This "overtransformation" thing is the main reason for that. Allowing transformations to be added more than once, while it would work mostly fine on multiframe readers, the three cases above would require book keeping on the applied transformations. This book keeping is not recommended as it opens the doors for errors and nasty bugs, and fragilizes the API.
+   
+   So this is a "brief" description of the API I've implemented in the past month. Tests and docs have also been written, and the API should become part of the development version of MDAnalysis anytime now.
+   
+   The next challenge? Adding transformations
+   
+   Until next time,
+   
+   Davide 
+   
+   
