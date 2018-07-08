@@ -25,7 +25,7 @@ for the given angle and axis using the `rotation_matrix` function of the `lib.tr
 module of MDAnalysis; the coordinates are then multiplied by the rotation matrix.
     
    Another transformation that I added was centering in the unit cell, called `center_in_box`. By
-default this function translates the ``Timestep` coordinates so that the COG of a given `AtomGroup`
+default this function translates the `Timestep` coordinates so that the COG of a given `AtomGroup`
 becomes aligned with the center of the unit cell.
 Just like `rotate_by`, this transformation takes an `AtomGroup` as argument. This is the only 
 mandatory argument. The other parameters define whether to use the COM or COG of the `AtomGroup`,
