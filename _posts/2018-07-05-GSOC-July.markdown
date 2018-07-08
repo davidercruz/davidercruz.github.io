@@ -1,0 +1,65 @@
+---
+layout: post
+title:  "GSOC2018: July update 1 - rotation, centering and PBC unwrapping"
+date:   2018-07-05 16:32:16 +0100
+categories: GSOC2018
+---
+   After having the PR for the on-the-fly transformations API approved, it was time
+to add more transformations. 
+
+   I started by adding a rotation transformation called `rotate_by`. This transformation 
+takes an `AtomGroup` an angle and a direction vector. The axis of rotation is defined by 
+the center of geometry (COG) or mass (COM) of the `AtomGroup` and the direction vector. 
+   The user is given multiple options regarding how the axis is defined and how the COG/COM 
+is calculated:
+   - a coordinate point can be given and will replace the COG/COM calculation and will be
+     used to define the axis of rotation;
+   - the COM/COG can be calculated with or without taking periodic boundary conditions (PBC)
+     in to account. When PBC are used, the atoms are moved to the primary unit cell before the
+     center calculation.
+     
+   The COG/COM functions were already implemented in [MDAnalysis](https://www.mdanalysis.org/) , 
+and are methods of the `AtomGroup` class. The rotation of the coordinates is very simple - a 
+[rotation matrix](https://en.wikipedia.org/wiki/Rotation_matrix#In_three_dimensions) is calculated
+for the given angle and axis using the `rotation_matrix` function of the `lib.transformations` 
+module of MDAnalysis; the coordinates are then multiplied by the rotation matrix.
+    
+   Another transformation that I added was centering in the unit cell, called `center_in_box`. By
+default this function translates the ``Timestep` coordinates so that the COG of a given `AtomGroup`
+becomes aligned with the center of the unit cell.
+Just like `rotate_by`, this transformation takes an `AtomGroup` as argument. This is the only 
+mandatory argument. The other parameters define whether to use the COM or COG of the `AtomGroup`,
+if PBCs are taken into account for the COM/COG calculation. Finally there's a `point` argument that
+takes an array of a 3d coordinate. This point overrides the COG/COM calculation and the coordinates
+are translated so this point aligns with the center of the unit cell instead.
+   The calculation is very simple - the vector between the center of the unit cell and the COG/COM/point
+is calculated, and then added to all the coordinates of that `Timestep`.
+
+   Finally, I gave a shot at enhancing the function `make_whole` of the `lib.mdamath` module of MDAnalysis.
+This function takes a molecule (called fragment in the API) that has been broken due to PBCs and rebuilds it
+so that all the bonds have their correct length again. This is undoing what the `AtomGroup` method `wrap`
+does. Instead of having all the atoms inside the unit cell, when rebuilding the broken molecule some atoms
+will end up outside. 
+   Untill now, `make_whole` only worked with orthogonal unit cells. Another issue was the performance - it
+was very slow. My intention was mainly extendind the functionality to triclinic unit cells. 
+   Triclinic unit cells, unlike the orthogonal ones, don't have 90 degree angles between the 3 vectors 
+that define them. This makes it harder to solve this problem intuitively. The idea that I, with a lot of
+help from [Manuel Melo](https://github.com/mnmelo), had was translating the origin of the vectors formed
+by the array of second atoms of the bonds of the fragment and the array of first atoms to the center of 
+the unit cell. Then vectors that fell outside the unit cell would be wrapped using the `apply_PBC` function
+of the `lib.distances` module of MDAnalysis. Then the origin of the vectors would be translated again to 
+the origin of the unit cell. Adding this array of vectors to the array of first atoms of the bonds would
+return the corrected positions of the second atoms. This processed would be repeated inside the function
+until all the bonds were correct.
+   This code was fast, but had a major problem. It failed to rebuild cyclic molecules.
+At the same time [Richard Gowers](https://github.com/richardjgowers) ported the original make_whole to cython,
+with optimizations and updated it to work with triclinic unit cells. It didn't have the issues that my version
+had, and so it was merged.
+   Trying to solve the triclinic unit cell problem was a good exercise, and really helped me have a deeper
+understanding of something I use everyday in my project, and never really gave much thought to.
+
+That's all for now. The next post will be about more flavours of coordinate centering.
+
+Until next time,
+   
+   Davide 
