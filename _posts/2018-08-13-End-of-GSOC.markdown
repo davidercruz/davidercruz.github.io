@@ -8,7 +8,7 @@ categories: GSOC2018
 It's the final day of GSOC 2018... It has been a great experience - I learned a lot about programming and
 development and it also helped me understand some of the tools that I use everyday without thinking. 
 
-##First evaluation
+## First evaluation
 
 During the past 3 months, I helped implement on-the-fly transformations in MDAnalysis, as part of the GSOC
 2018 program with NumFOCUS. These transformations greatly enhance the functionality of MDAnalysis, and are
@@ -25,9 +25,9 @@ also added, as it helped with testing, and would serve as a template for future 
  - An issue was opened by my mentor [Jonathan Barnoud](https://github.com/jbarnoud) to add the newly 
 implemented transformations to the MDAnalysis online docs - [issue #947](https://github.com/MDAnalysis/mdanalysis/issues/1947). It was fixed by me in [this PR](https://github.com/MDAnalysis/mdanalysis/pull/1948).
 
-##Second evaluation
+## Second evaluation
 
-###Coordinate rotation
+### Coordinate rotation
 
 After making sure the transformations API was solid, it was time to add a library of commonly used
 transformations. First was a rotation transform - `rotateby`. This transformation performs a simple rotation
@@ -38,7 +38,7 @@ of the whole coordinate system using a given directional vector and a given poin
  - Later, I found an error in the rotation transformation calculation when using a custom point and vector. 
  The PR correcting this issue can be seen [here](https://github.com/MDAnalysis/mdanalysis/pull/2000)
 
-###AtomGroup centering
+### AtomGroup centering
 
  After the rotation, `AtomGroup` centering was the next challenge. The first centering function to be added
  was `center_in_box`. As the name says this function centers a given `AtomGroup` in the unit cell, by
@@ -48,7 +48,7 @@ of the whole coordinate system using a given directional vector and a given poin
  - the PR for the `center_in_box` transformation can be seen 
  [here](https://github.com/MDAnalysis/mdanalysis/pull/1946)
  
-###PBC treatment - take 1 
+### PBC treatment - take 1 
 
  Another very important transformation - one that can be considered the mostly used when working with molecular
  dynamics simulation trajectories - is unwrapping. This transformation is used to correct artifacts cause by periodic boundary conditions. When molecules partly cross the boundaries of the unit cell (when using PBC)
@@ -63,9 +63,9 @@ when [Richard Gowers](https://github.com/richardjgowers) ported `make_whole` to 
 functionality to triclinic unit cells ([here](https://github.com/MDAnalysis/mdanalysis/pull/1965) is his pull
 request).
 
-##Final Evaluation
+## Final Evaluation
 
-###More centering functions
+### More centering functions
 
 After adding the first centering function - `center_in_box` - other two useful centering functions were
 implemented: `center_in_axis` and `center_in_plane`.
@@ -76,7 +76,7 @@ implemented: `center_in_axis` and `center_in_plane`.
 [here](https://github.com/MDAnalysis/mdanalysis/pull/1973). In this PR some changes are made to the argument
 variable names and documentation of `center_in_box`.
 
-###Fitting transformations
+### Fitting transformations
 
 With the centering transformations now done, it was time to focus on molecule fitting. Transformations that
 perform the fitting of a given molecule to a reference structure are useful when analyzing and visualizing
@@ -88,7 +88,7 @@ The latter removes both rotation and translation by performing a least squares a
 - the PR for the fitting transformations can be checked 
 [here](https://github.com/MDAnalysis/mdanalysis/pull/1991)
 
-###PBC treatment - take 2
+### PBC treatment - take 2
 
 The last transformations to be added were the `wrap` and `unwrap` functions. With the PR for the porting of
 `make_whole` to cython now merged, I added the transformations that dealt with PBC. The `wrap`function
@@ -97,7 +97,7 @@ translates all the atoms to the interior of the unit cell - by default it does t
 
 - [Here](https://github.com/MDAnalysis/mdanalysis/pull/2038) is the PR for these two transformations
 
-###Demos and blog posts
+### Demos and blog posts
 
 With some of the transformations now merged with the 
 [develop branch of MDAnalysis](https://github.com/MDAnalysis/mdanalysis), and others being reviewed, I was
@@ -110,7 +110,7 @@ what someone described as the "pure magic" of the on-the-fly transformations.
 [this PR](https://github.com/MDAnalysis/binder-notebook/pull/10)
 
 
-##Closing words
+## Closing words
 
 The past 3 months have been a very rewarding experience. I have learned a lot about programming,
 GitHub and software development on bigger projects. And, more importantly, I'm proud of my contribution to
