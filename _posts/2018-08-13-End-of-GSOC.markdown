@@ -6,7 +6,9 @@ categories: GSOC2018
 ---
 
 It's the final day of GSOC 2018... It has been a great experience - I learned a lot about programming and
-development and it also helped me understand some of the tools that I use everyday without thinking. 
+development and it also helped me understand some of the tools that I use everyday without thinking.
+
+So, heres a summary of what I have done during GSOC. 
 
 ## First evaluation
 
